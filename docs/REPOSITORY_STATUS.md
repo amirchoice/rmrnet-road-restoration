@@ -28,7 +28,12 @@ Recommended release pattern:
 - Dataset provider pages: raw datasets.
 - README/docs: exact commands to reproduce generated splits.
 
-## Current Account Note
+## Current Repository Owner
 
-The GitHub connector in the development environment authenticated as `amirchoice`, while the requested public repository owner was `AmirNetwork`. Create or push the final repository under the account that should own the project.
+The repository was published under the signed-in/connected GitHub account:
 
+```text
+https://github.com/amirchoice/rmrnet-road-restoration
+```
+
+The originally requested owner name was `AmirNetwork`. Transfer the repository in GitHub settings if it should live under that account or organization instead.

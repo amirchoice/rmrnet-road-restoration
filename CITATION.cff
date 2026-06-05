@@ -5,7 +5,7 @@ type: software
 authors:
   - family-names: "Network"
     given-names: "Amir"
-repository-code: "https://github.com/AmirNetwork/rmrnet-road-restoration"
+repository-code: "https://github.com/amirchoice/rmrnet-road-restoration"
 date-released: "2026-06-05"
 license: MIT
 keywords:
@@ -15,4 +15,3 @@ keywords:
   - road defect detection
   - YOLO
   - active contour
-
