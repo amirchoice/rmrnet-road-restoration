@@ -1,0 +1,25 @@
+{
+  "selection_rule": "Select checkpoints and structural detail gain by validation YOLO mAP50 only; held-out test is evaluated after selection.",
+  "detector_imgsz": 320,
+  "device": "NVIDIA GeForce RTX 3050 via CUDA",
+  "pothole": {
+    "selected_checkpoint": "runs/rmrnet_v25_detail_combined_8ep/rcadnet_epoch_001.pth",
+    "selected_epoch": 1,
+    "selected_detail_gain": 0.2,
+    "mean_validation_map50": 0.533537610464519,
+    "mean_validation_map50_95": 0.232785881124435,
+    "reason": "Best mean validation mAP50 over motion, defocus, and low-light among v25 epochs; stronger detail gains did not improve mean validation mAP50."
+  },
+  "pcm": {
+    "selected_checkpoint": "runs/rmrnet_v25_detail_combined_8ep/rcadnet_epoch_003.pth",
+    "selected_epoch": 3,
+    "selected_detail_gain": 0.2,
+    "mean_validation_map50": 0.239534195447083,
+    "mean_validation_map50_95": 0.0838193714439193,
+    "reason": "Best mean validation mAP50 over motion, defocus, and low-light among v25 epochs; stronger detail gains did not improve mean validation mAP50."
+  },
+  "promotion_decision": {
+    "promote_to_main_640px_paper_tables": false,
+    "reason": "v25 is a clean structural improvement and improves mAP50-95 in most same-detector 320px test comparisons, but it is not a large mAP50 gain over v24 and was not rerun for the full 640px paper baseline suite."
+  }
+}

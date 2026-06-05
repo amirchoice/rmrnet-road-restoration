@@ -59,6 +59,8 @@ def load_rcadnet(weights: str, device: torch.device) -> RCADNet:
         attention_type=arch.get("attention_type", "edge"),
         conditioning=arch.get("conditioning", "film"),
         use_tdac_head=arch.get("use_tdac_head", False),
+        detail_preserve=arch.get("detail_preserve", False),
+        detail_gain=arch.get("detail_gain", 0.20),
     ).to(device)
     model.load_state_dict(checkpoint["model"], strict=True)
     model.eval()

@@ -144,6 +144,82 @@ class TaskEvidenceAttention(nn.Module):
         return features * (1.0 + attention)
 
 
+class EvidencePreservingDetailSkip(nn.Module):
+    """Learned high-frequency skip for detector-relevant road evidence.
+
+    The previous RMR-Net variants tried to preserve cracks/pothole rims mostly
+    through extra loss terms. This module makes that constraint structural: a
+    bounded, learned gate can re-inject reliable high-frequency detail from the
+    degraded input after the restoration residual is predicted.
+
+    The gain is deliberately capped. The network can use the skip where it
+    helps PSNR or detector evidence, but it cannot turn into an unconstrained
+    sharpening filter.
+    """
+
+    def __init__(
+        self,
+        feature_channels: int,
+        *,
+        max_gain: float = 0.20,
+        kernel_size: int = 5,
+    ) -> None:
+        super().__init__()
+        hidden = max(feature_channels // 2, 8)
+        k = max(int(kernel_size), 3)
+        if k % 2 == 0:
+            k += 1
+        self.kernel_size = k
+        self.max_gain = float(max_gain)
+        self.gate = nn.Sequential(
+            nn.Conv2d(feature_channels + 4, hidden, 3, padding=1),
+            nn.GELU(),
+            nn.Conv2d(hidden, 1, 1),
+        )
+        self._init_gate()
+
+    def _init_gate(self) -> None:
+        last = self.gate[-1]
+        if isinstance(last, nn.Conv2d):
+            nn.init.zeros_(last.weight)
+            # Start conservative: sigmoid(-2) ~= 0.12, so legacy checkpoints do
+            # not suddenly over-sharpen when this head is enabled for fine-tune.
+            nn.init.constant_(last.bias, -2.0)
+
+    def _evidence_cues(self, image: torch.Tensor) -> torch.Tensor:
+        gray = image.mean(dim=1, keepdim=True)
+        dx = F.pad(gray[:, :, :, 1:] - gray[:, :, :, :-1], (0, 1, 0, 0))
+        dy = F.pad(gray[:, :, 1:, :] - gray[:, :, :-1, :], (0, 0, 0, 1))
+        edge = torch.sqrt(dx.square() + dy.square() + 1e-6)
+        blur = F.avg_pool2d(gray, kernel_size=9, stride=1, padding=4)
+        contrast = torch.abs(gray - blur)
+        dark = (1.0 - gray).clamp(0.0, 1.0)
+        saturation = image.amax(dim=1, keepdim=True) - image.amin(dim=1, keepdim=True)
+        cues = torch.cat([edge, contrast, dark, saturation], dim=1)
+        return cues / (cues.amax(dim=(2, 3), keepdim=True) + 1e-6)
+
+    def _highpass(self, image: torch.Tensor) -> torch.Tensor:
+        blur = F.avg_pool2d(
+            image,
+            kernel_size=self.kernel_size,
+            stride=1,
+            padding=self.kernel_size // 2,
+        )
+        return image - blur
+
+    def forward(
+        self,
+        restored_base: torch.Tensor,
+        decoder_features: torch.Tensor,
+        image: torch.Tensor,
+    ) -> tuple[torch.Tensor, torch.Tensor, torch.Tensor]:
+        cues = self._evidence_cues(image)
+        gate = torch.sigmoid(self.gate(torch.cat([decoder_features, cues], dim=1)))
+        detail = self._highpass(image)
+        restored = torch.clamp(restored_base + self.max_gain * gate * detail, 0.0, 1.0)
+        return restored, gate, detail
+
+
 class IdentityDefectAttention(nn.Module):
     """Ablation module that keeps the backbone identical except defect gating."""
 
@@ -264,6 +340,8 @@ class RCADNet(nn.Module):
         attention_type: str = "edge",
         conditioning: str = "film",
         use_tdac_head: bool = False,
+        detail_preserve: bool = False,
+        detail_gain: float = 0.20,
     ) -> None:
         super().__init__()
         self.code_dim = code_dim
@@ -273,6 +351,8 @@ class RCADNet(nn.Module):
         self.attention_type = attention_type
         self.conditioning = conditioning
         self.use_tdac_head = use_tdac_head
+        self.detail_preserve = bool(detail_preserve)
+        self.detail_gain = float(detail_gain)
         self.stem = nn.Conv2d(3, width, 3, padding=1)
         if not use_defect_attention or attention_type == "none":
             self.defect_attention = IdentityDefectAttention()
@@ -293,6 +373,11 @@ class RCADNet(nn.Module):
         self.up1 = Up(width * 2)
         self.dec1 = self._make_blocks(width, code_dim, blocks_per_stage)
         self.head = nn.Conv2d(width, 3, 3, padding=1)
+        self.detail_skip = (
+            EvidencePreservingDetailSkip(width, max_gain=self.detail_gain)
+            if self.detail_preserve
+            else None
+        )
         # Train-time auxiliary head for differentiable active-contour loss.
         # Channel order is phi_0, lambda_1, lambda_2. It is disabled by
         # default so older checkpoints and inference adapters keep the original
@@ -333,7 +418,11 @@ class RCADNet(nn.Module):
             return estimated
         return torch.clamp(0.5 * code + 0.5 * estimated, 0.0, 1.0)
 
-    def _decode(self, image: torch.Tensor, code: torch.Tensor) -> tuple[torch.Tensor, torch.Tensor | None]:
+    def _decode(
+        self,
+        image: torch.Tensor,
+        code: torch.Tensor,
+    ) -> tuple[torch.Tensor, torch.Tensor | None, torch.Tensor | None, torch.Tensor | None]:
         x1 = self.defect_attention(self.stem(image), image)
         x1 = self._run_blocks(x1, code, self.enc1)
         x2 = self._run_blocks(self.down1(x1), code, self.enc2)
@@ -341,9 +430,15 @@ class RCADNet(nn.Module):
         y = self._run_blocks(self.up2(x3, x2), code, self.dec2)
         y = self._run_blocks(self.up1(y, x1), code, self.dec1)
         residual = self.head(y)
-        restored = torch.clamp(image + residual, 0.0, 1.0)
+        restored_base = torch.clamp(image + residual, 0.0, 1.0)
+        detail_gate = None
+        detail_residual = None
+        if self.detail_skip is not None:
+            restored, detail_gate, detail_residual = self.detail_skip(restored_base, y, image)
+        else:
+            restored = restored_base
         aux = self.tdac_head(y) if self.tdac_head is not None else None
-        return restored, aux
+        return restored, aux, detail_gate, detail_residual
 
     @staticmethod
     def unpack_tdac_aux(aux: torch.Tensor | None) -> dict[str, torch.Tensor | None]:
@@ -383,7 +478,7 @@ class RCADNet(nn.Module):
             severity = code[:, -1].clamp(0.0, 1.0)
             if bool((severity < gate_threshold).all().detach().cpu()):
                 return image
-        restored, aux = self._decode(image, code)
+        restored, aux, detail_gate, detail_residual = self._decode(image, code)
         gate = None
         if gate_threshold is not None:
             severity = code[:, -1].clamp(0.0, 1.0)
@@ -409,4 +504,6 @@ class RCADNet(nn.Module):
             "severity": code[:, -1],
             "z_severity": code[:, -1],
             "gate": gate,
+            "detail_gate": detail_gate,
+            "detail_residual": detail_residual,
         }

@@ -52,6 +52,9 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--block-type", choices=["simple", "evidence"], default="simple")
     parser.add_argument("--attention-type", choices=["edge", "task", "none"], default="edge")
     parser.add_argument("--conditioning", choices=["film", "gated_basis"], default="film")
+    parser.add_argument("--detail-preserve", action="store_true", help="Enable structural evidence-preserving high-frequency skip.")
+    parser.add_argument("--detail-gain", type=float, default=0.20, help="Maximum gain for the structural detail skip.")
+    parser.add_argument("--new-head-lr-mult", type=float, default=10.0, help="LR multiplier for newly added train-time/detail heads.")
     parser.add_argument("--metadata-dropout", type=float, default=0.0)
     parser.add_argument("--metadata-noise", type=float, default=0.0)
     parser.add_argument(
@@ -312,6 +315,8 @@ def save_checkpoint(path: Path, model: RCADNet, args: argparse.Namespace, epoch:
             "attention_type": args.attention_type,
             "conditioning": args.conditioning,
             "use_tdac_head": args.use_tdac_head or args.use_task_losses,
+            "detail_preserve": args.detail_preserve,
+            "detail_gain": args.detail_gain,
         },
         "epoch": epoch,
         "metrics": metrics or {},
@@ -449,7 +454,7 @@ def debug_training_stats(
             payload[f"evidence_{label}_input"] = float(ev_in[idx].detach().cpu())
             payload[f"evidence_{label}_restored"] = float(ev_out[idx].detach().cpu())
             payload[f"evidence_{label}_target"] = float(ev_gt[idx].detach().cpu())
-        for aux_name in ("phi", "lambda1", "lambda2", "severity", "gate"):
+        for aux_name in ("phi", "lambda1", "lambda2", "severity", "gate", "detail_gate", "detail_residual"):
             value = result.get(aux_name)
             if isinstance(value, torch.Tensor):
                 payload.update(_tensor_stats(aux_name, value))
@@ -581,6 +586,8 @@ def main() -> None:
         attention_type=args.attention_type,
         conditioning=args.conditioning,
         use_tdac_head=args.use_tdac_head or args.use_task_losses,
+        detail_preserve=args.detail_preserve,
+        detail_gain=args.detail_gain,
     ).to(device)
     if args.init_weights:
         checkpoint = torch.load(args.init_weights, map_location=device)
@@ -604,7 +611,20 @@ def main() -> None:
         visibility_weight=args.visibility_weight,
     )
     task_loss = build_task_loss(args, device)
-    optimizer = torch.optim.AdamW(model.parameters(), lr=args.lr, weight_decay=1e-4)
+    boosted_keywords = ("tdac_head", "detail_skip", "code_encoder", "code_fuser")
+    boosted_params = []
+    base_params = []
+    boosted_names = []
+    for name, param in model.named_parameters():
+        if any(token in name for token in boosted_keywords):
+            boosted_params.append(param)
+            boosted_names.append(name)
+        else:
+            base_params.append(param)
+    param_groups = [{"params": base_params, "lr": args.lr}]
+    if boosted_params:
+        param_groups.append({"params": boosted_params, "lr": args.lr * max(float(args.new_head_lr_mult), 1.0)})
+    optimizer = torch.optim.AdamW(param_groups, lr=args.lr, weight_decay=1e-4)
     scaler = torch.amp.GradScaler("cuda", enabled=resolve_amp(args, device))
 
     audit_config = {
@@ -622,6 +642,10 @@ def main() -> None:
         "lambda_active_contour": args.lambda_active_contour,
         "lambda_detector_input_anchor": args.lambda_detector_input_anchor,
         "lambda_evidence_nonregression": args.lambda_evidence_nonregression,
+        "detail_preserve": args.detail_preserve,
+        "detail_gain": args.detail_gain,
+        "new_head_lr_mult": args.new_head_lr_mult,
+        "boosted_parameter_names": boosted_names,
         "selection_policy": "Training saves PSNR/loss checkpoints. Detector-mAP promotion must be performed externally on validation restored YOLO splits.",
         "args": vars(args),
     }
@@ -711,11 +735,11 @@ def main() -> None:
             "phase": "rmr_update",
             "loss": running / max(len(loader), 1),
             "task_warmup_scale": scale,
-            "effective_tdp_weight": args.lambda_tdp * scale,
-            "effective_jacobian_weight": args.lambda_jacobian * scale,
-            "effective_active_contour_weight": args.lambda_active_contour * scale,
-            "effective_detector_input_anchor_weight": args.lambda_detector_input_anchor * scale,
-            "effective_evidence_nonregression_weight": args.lambda_evidence_nonregression * scale,
+            "effective_tdp_weight": (args.lambda_tdp * scale) if task_loss is not None else 0.0,
+            "effective_jacobian_weight": (args.lambda_jacobian * scale) if task_loss is not None else 0.0,
+            "effective_active_contour_weight": (args.lambda_active_contour * scale) if task_loss is not None else 0.0,
+            "effective_detector_input_anchor_weight": (args.lambda_detector_input_anchor * scale) if task_loss is not None else 0.0,
+            "effective_evidence_nonregression_weight": (args.lambda_evidence_nonregression * scale) if task_loss is not None else 0.0,
             "selection_note": "Detector mAP checkpoint selection is performed externally on validation splits only; this trainer saves explicit PSNR/loss checkpoints for audit.",
         }
         for name, value in sorted(component_sums.items()):
