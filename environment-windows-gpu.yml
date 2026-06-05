@@ -1,0 +1,27 @@
+name: rmrnet-road-restoration
+channels:
+  - pytorch
+  - nvidia
+  - conda-forge
+dependencies:
+  - python=3.12
+  - pip
+  - numpy
+  - pandas
+  - pillow
+  - opencv
+  - pyyaml
+  - tqdm
+  - matplotlib
+  - scikit-image
+  - scikit-learn
+  - pip:
+      - --index-url https://download.pytorch.org/whl/cu128
+      - torch
+      - torchvision
+      - --extra-index-url https://pypi.org/simple
+      - einops
+      - tensorboard
+      - ultralytics
+      - lpips
+

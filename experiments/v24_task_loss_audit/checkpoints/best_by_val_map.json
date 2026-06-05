@@ -1,0 +1,198 @@
+{
+  "ivcnz": {
+    "selection_metric": "mean validation YOLO mAP50 across motion_horizontal_medium, defocus_medium, lowlight_medium",
+    "selected_epoch": 6,
+    "avg_val_map50": 0.25298871925732486,
+    "all_epoch_validation_summary": [
+      {
+        "epoch": 1,
+        "avg_val_map50": 0.24963478989805257,
+        "avg_val_map50_95": 0.09016865865689012
+      },
+      {
+        "epoch": 2,
+        "avg_val_map50": 0.2512966513242592,
+        "avg_val_map50_95": 0.09054340307250801
+      },
+      {
+        "epoch": 3,
+        "avg_val_map50": 0.25253872223184054,
+        "avg_val_map50_95": 0.09039698701166171
+      },
+      {
+        "epoch": 4,
+        "avg_val_map50": 0.2527326616084377,
+        "avg_val_map50_95": 0.09094258468812111
+      },
+      {
+        "epoch": 5,
+        "avg_val_map50": 0.2515391534476759,
+        "avg_val_map50_95": 0.09067458184808384
+      },
+      {
+        "epoch": 6,
+        "avg_val_map50": 0.25298871925732486,
+        "avg_val_map50_95": 0.09075739729795858
+      }
+    ],
+    "source_csv": "runs\\detection_eval_v24_val\\pothole_v24_epoch_selection.csv",
+    "heldout_test": {
+      "motion": {
+        "map50_95": 0.0882059012631091,
+        "map50": 0.23316003809555813,
+        "map75": 0.056840387118537214,
+        "precision": 0.35694213001295705,
+        "recall": 0.29385964912280704
+      },
+      "defocus": {
+        "map50_95": 0.06093876687070863,
+        "map50": 0.15724560016632388,
+        "map75": 0.03719018659489155,
+        "precision": 0.28355101156652984,
+        "recall": 0.21052631578947367
+      },
+      "lowlight": {
+        "map50_95": 0.1355210764706724,
+        "map50": 0.3403560384600496,
+        "map75": 0.08937616663698134,
+        "precision": 0.4807545282892012,
+        "recall": 0.3669590643274854
+      }
+    },
+    "test_source_csv": "runs\\detection_eval_v24_test\\pothole_v24_epoch006_test.csv"
+  },
+  "pcm": {
+    "selection_metric": "mean validation YOLO mAP50 across motion_horizontal_medium, defocus_medium, lowlight_medium",
+    "selected_epoch": 2,
+    "avg_val_map50": 0.27909442885910235,
+    "all_epoch_validation_summary": [
+      {
+        "epoch": 1,
+        "avg_val_map50": 0.27793169222639136,
+        "avg_val_map50_95": 0.10977050794485164
+      },
+      {
+        "epoch": 2,
+        "avg_val_map50": 0.27909442885910235,
+        "avg_val_map50_95": 0.11066961447735445
+      },
+      {
+        "epoch": 3,
+        "avg_val_map50": 0.27879600371696406,
+        "avg_val_map50_95": 0.11074500545383098
+      },
+      {
+        "epoch": 4,
+        "avg_val_map50": 0.2781684003746625,
+        "avg_val_map50_95": 0.1117335690944552
+      },
+      {
+        "epoch": 5,
+        "avg_val_map50": 0.2786203424708767,
+        "avg_val_map50_95": 0.10959177092580334
+      },
+      {
+        "epoch": 6,
+        "avg_val_map50": 0.2780254439405736,
+        "avg_val_map50_95": 0.11068551353344136
+      }
+    ],
+    "source_csv": "runs\\detection_eval_v24_pcm_val\\pcm_v24_epoch_selection.csv",
+    "heldout_test": {
+      "motion": {
+        "map50_95": 0.1203882178015204,
+        "map50": 0.3030194760518794,
+        "map75": 0.07521259577041231,
+        "precision": 0.36455714839146486,
+        "recall": 0.33984862909994185
+      },
+      "defocus": {
+        "map50_95": 0.10454717460457173,
+        "map50": 0.2699624469686259,
+        "map75": 0.05888756954711536,
+        "precision": 0.4120307804502544,
+        "recall": 0.282332918863155
+      },
+      "lowlight": {
+        "map50_95": 0.17617833224857535,
+        "map50": 0.413535452884987,
+        "map75": 0.12300905287984097,
+        "precision": 0.509356682641506,
+        "recall": 0.4073970865534659
+      }
+    },
+    "test_source_csv": "runs\\detection_eval_v24_pcm_test\\pcm_v24_epoch002_test.csv"
+  },
+  "ivcnz_lowlight_policy": {
+    "validation_policy": {
+      "strength": 0.65,
+      "threshold": 0.08239386975765228,
+      "gain": 1.0,
+      "contrast": 1.0,
+      "input": 19,
+      "residual": 167,
+      "map50_95": 0.13683725292970988,
+      "map50": 0.36920398380521063,
+      "map75": 0.07725383650828982,
+      "precision": 0.4612968680817462,
+      "recall": 0.39046805887306707
+    },
+    "heldout_test_metrics": {
+      "map50_95": 0.14986756740805943,
+      "map50": 0.3764938338166316,
+      "map75": 0.09308082272150425,
+      "precision": 0.47354658573221897,
+      "recall": 0.42251461988304095
+    },
+    "test_counts": {
+      "input": 21,
+      "residual": 166
+    },
+    "source_json": "runs\\residual_policy_v24\\pothole_lowlight_v24_summary.json"
+  },
+  "pcm_lowlight_policy": {
+    "validation_policy": {
+      "strength": 1.0,
+      "threshold": -1000000000.0,
+      "gain": 1.0,
+      "contrast": 1.0,
+      "input": 0,
+      "residual": 301,
+      "map50_95": 0.15067393318912023,
+      "map50": 0.3641641508857072,
+      "map75": 0.10035205977913153,
+      "precision": 0.4201304279953884,
+      "recall": 0.40961688354387227
+    },
+    "heldout_test_metrics": {
+      "map50_95": 0.1767714535920347,
+      "map50": 0.4144773463375649,
+      "map75": 0.12308913538544701,
+      "precision": 0.5127621956819411,
+      "recall": 0.4070967458284076
+    },
+    "test_counts": {
+      "input": 0,
+      "residual": 302
+    },
+    "source_json": "runs\\residual_policy_v24\\pcm_lowlight_v24_summary.json"
+  },
+  "promotion_decision": {
+    "promote_v24_to_main_paper_tables": false,
+    "reason": "v24 compiles, trains, and evaluates cleanly, but held-out detector mAP50 is not better than the prior strongest local v22/v23 results. Use v24 as an ablation/safety audit unless a later longer training/tuning sweep beats validation and held-out test baselines.",
+    "previous_reference": {
+      "ivcnz": {
+        "note": "Prior strongest local result from v22/v23 notes, not regenerated in this v24 cycle.",
+        "motion_map50": 0.242,
+        "defocus_map50": 0.176,
+        "lowlight_policy_map50": 0.383
+      },
+      "pcm": {
+        "note": "Prior strongest local result from v22/v23 notes, not regenerated in this v24 cycle.",
+        "motion_map50": 0.31,
+        "defocus_map50": 0.273,
+        "lowlight_map50": 0.415
+      }
+    }
+  }
+}

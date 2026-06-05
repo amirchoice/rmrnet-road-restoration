@@ -1,0 +1,14 @@
+numpy
+pandas
+pillow
+opencv-python
+pyyaml
+tqdm
+matplotlib
+scikit-image
+scikit-learn
+einops
+tensorboard
+ultralytics
+lpips
+

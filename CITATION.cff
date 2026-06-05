@@ -1,0 +1,18 @@
+cff-version: 1.2.0
+title: "RMR-Net Road Image Restoration for Detection and Boundary Analysis"
+message: "If this code helps your research, please cite the associated manuscript or this software record."
+type: software
+authors:
+  - family-names: "Network"
+    given-names: "Amir"
+repository-code: "https://github.com/AmirNetwork/rmrnet-road-restoration"
+date-released: "2026-06-05"
+license: MIT
+keywords:
+  - image restoration
+  - deblurring
+  - intelligent transportation systems
+  - road defect detection
+  - YOLO
+  - active contour
+
